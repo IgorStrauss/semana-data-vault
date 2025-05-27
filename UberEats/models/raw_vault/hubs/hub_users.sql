@@ -18,6 +18,7 @@ WITH combined_sources AS (
 deduplicated AS (
   SELECT
     {{ dbt_utils.generate_surrogate_key(['cpf']) }} AS hash_hub_cpf,
+    -- ['multi_tenant_id', 'cpf']
     cpf,
     'trn-user' AS bkcc,
     'tenant-br' AS multi_tenant_id,
