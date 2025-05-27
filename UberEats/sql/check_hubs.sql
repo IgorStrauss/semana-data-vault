@@ -1,42 +1,43 @@
--- 1
-SELECT COUNT(*) AS row_count FROM public_dv_raw.hub_orders;
-SELECT COUNT(*) AS row_count FROM public_dv_raw.hub_users;
-SELECT COUNT(*) AS row_count FROM public_dv_raw.hub_restaurants;
-SELECT COUNT(*) AS row_count FROM public_dv_raw.hub_drivers;
+-- check count and data
+SELECT COUNT(*) FROM public_dv_raw.hub_drivers;
+SELECT * FROM public_dv_raw.hub_drivers LIMIT 5;
 
--- 2
-SELECT order_id, COUNT(*) AS cnt
-FROM public_dv_raw.hub_orders
-GROUP BY order_id
-HAVING COUNT(*) > 1;
+-- business key null check
+SELECT *
+FROM public_dv_raw.hub_drivers
+WHERE license_number IS NULL;
 
-SELECT cpf, COUNT(*) AS cnt
+SELECT *
 FROM public_dv_raw.hub_users
-GROUP BY cpf
+WHERE cpf IS NULL;
+
+-- hash key validation
+SELECT hash_hub_license_number, COUNT(*)
+FROM public_dv_raw.hub_drivers
+GROUP BY hash_hub_license_number
 HAVING COUNT(*) > 1;
 
--- 3
-SELECT * FROM public_dv_raw.hub_orders WHERE order_id IS NULL;
-SELECT * FROM public_dv_raw.hub_users WHERE cpf IS NULL;
+SELECT hash_hub_cpf, COUNT(*)
+FROM public_dv_raw.hub_users
+GROUP BY hash_hub_cpf
+HAVING COUNT(*) > 1;
 
--- 4
-SELECT hash_hub_order_id, order_id, bkcc, multi_tenant_id
-FROM public_dv_raw.hub_orders
-LIMIT 5;
+-- null hash check
+SELECT *
+FROM public_dv_raw.hub_drivers
+WHERE hash_hub_license_number IS NULL;
 
--- 5
-SELECT DISTINCT bkcc FROM public_dv_raw.hub_orders;
-SELECT DISTINCT bkcc FROM public_dv_raw.hub_users;
-
--- 6
+-- load timestamp profiling
 SELECT
   DATE_TRUNC('DAY', load_dts) AS load_day,
-  COUNT(*) AS rows_loaded
-FROM public_dv_raw.hub_orders
+  COUNT(*) AS records
+FROM public_dv_raw.hub_drivers
 GROUP BY 1
 ORDER BY 1 DESC;
 
--- 7
-SELECT record_source, COUNT(*) AS dt
+SELECT
+  DATE_TRUNC('DAY', load_dts) AS load_day,
+  COUNT(*) AS records
 FROM public_dv_raw.hub_users
-GROUP BY record_source;
+GROUP BY 1
+ORDER BY 1 DESC;

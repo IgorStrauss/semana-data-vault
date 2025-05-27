@@ -1,5 +1,21 @@
+{{ config(
+    materialized = 'incremental',
+    unique_key = 'hash_link_order_user_restaurant_driver'
+) }}
+
 WITH source AS (
-  SELECT * FROM {{ source('uber_eats', 'v_stg_orders') }}
+  SELECT
+    order_id,
+    cpf,
+    cnpj,
+    license_number,
+    load_dts,
+    rec_src AS record_source
+  FROM {{ source('uber_eats', 'v_stg_orders') }}
+  WHERE order_id IS NOT NULL
+    AND cpf IS NOT NULL
+    AND cnpj IS NOT NULL
+    AND license_number IS NOT NULL
 ),
 
 hashed AS (
@@ -18,8 +34,15 @@ hashed AS (
 
     'tenant-br' AS multi_tenant_id,
     load_dts,
-    rec_src AS record_source
+    record_source
   FROM source
 )
 
-SELECT DISTINCT * FROM hashed
+SELECT *
+FROM hashed
+
+{% if is_incremental() %}
+WHERE hash_link_order_user_restaurant_driver NOT IN (
+  SELECT hash_link_order_user_restaurant_driver FROM {{ this }}
+)
+{% endif %}
