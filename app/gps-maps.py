@@ -5,12 +5,10 @@ import googlemaps
 from databricks import sql
 import json
 
-# Databricks and Google Maps configurations
 DATABRICKS_CONFIG = st.secrets["databricks"]
 GOOGLE_MAPS_API_KEY = st.secrets["google_maps"]["api_key"]
 
 
-# Connect to Databricks SQL
 @st.cache_resource
 def get_connection():
     return sql.connect(
@@ -19,17 +17,13 @@ def get_connection():
         access_token=DATABRICKS_CONFIG["access_token"]
     )
 
-
-# Initialize Google Maps client
 gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
 st.set_page_config(page_title="📍 Google Maps Route", layout="wide")
 st.title("🗺️ Google Maps Route")
 
-# Get connection
 connection = get_connection()
 
-# --- Select Order ID ---
 try:
     order_df = pd.read_sql("SELECT DISTINCT order_id FROM ubereats.delivery.hub_order", connection)
     selected_order = st.selectbox("Select an Order ID", order_df["order_id"].tolist())
@@ -37,7 +31,6 @@ except Exception as e:
     st.error(f"Failed to fetch order IDs: {e}")
     st.stop()
 
-# --- Display Route ---
 if selected_order:
     route_query = f"""
     SELECT 
@@ -70,12 +63,10 @@ if selected_order:
             start_coords = (row["start_lat"], row["start_lon"])
             end_coords = (row["end_lat"], row["end_lon"])
 
-            # Debug information
             with st.expander("🔍 Debug Information"):
                 st.write(f"Start coordinates: {start_coords}")
                 st.write(f"End coordinates: {end_coords}")
 
-            # Call Google Maps Directions API with better error handling
             try:
                 directions = gmaps.directions(
                     origin=start_coords,
@@ -83,7 +74,6 @@ if selected_order:
                     mode="driving"
                 )
 
-                # Debug: Show the raw API response
                 with st.expander("🔍 Raw API Response"):
                     st.json(directions)
 
@@ -92,39 +82,33 @@ if selected_order:
                     st.info("Possible reasons: Invalid coordinates, no route available, or API issues")
 
                 elif len(directions) > 0:
-                    # The API returns a list, first element contains the route info
                     route_data = directions[0]
 
                     if "overview_polyline" in route_data and "points" in route_data["overview_polyline"]:
                         polyline = route_data["overview_polyline"]["points"]
                         decoded = googlemaps.convert.decode_polyline(polyline)
 
-                        # Debug decoded points
                         with st.expander("🔍 Decoded Polyline Points"):
                             st.write(f"Number of points: {len(decoded)}")
                             st.write(f"First few points: {decoded[:3]}")
 
-                        # Create list of coordinates for the path
                         path_coordinates = [[p["lng"], p["lat"]] for p in decoded]
 
-                        # Create DataFrame for pydeck with proper structure
                         polyline_df = pd.DataFrame({
-                            "path": [path_coordinates]  # Single row with all coordinates
+                            "path": [path_coordinates]
                         })
 
-                        # Create path layer
                         path_layer = pdk.Layer(
                             "PathLayer",
                             data=polyline_df,
                             get_path="path",
-                            get_color=[255, 140, 0],  # Orange color for better visibility
+                            get_color=[255, 140, 0],
                             width_scale=5,
                             width_min_pixels=3,
                             pickable=True,
                             auto_highlight=True
                         )
 
-                        # Add markers for start and end points
                         points_df = pd.DataFrame({
                             "lat": [start_coords[0], end_coords[0]],
                             "lon": [start_coords[1], end_coords[1]],
@@ -145,7 +129,6 @@ if selected_order:
                             auto_highlight=True
                         )
 
-                        # Set view state
                         view_state = pdk.ViewState(
                             latitude=(start_coords[0] + end_coords[0]) / 2,
                             longitude=(start_coords[1] + end_coords[1]) / 2,
@@ -158,10 +141,9 @@ if selected_order:
                             layers=[path_layer, scatter_layer],
                             initial_view_state=view_state,
                             tooltip={"text": "{type}"},
-                            map_style="mapbox://styles/mapbox/dark-v10"  # Better visibility
+                            map_style="mapbox://styles/mapbox/dark-v10"
                         ))
 
-                        # Show route summary
                         if "legs" in route_data:
                             leg = route_data["legs"][0]
                             col1, col2 = st.columns(2)
@@ -170,11 +152,9 @@ if selected_order:
                             with col2:
                                 st.metric("Duration", leg["duration"]["text"])
 
-                            # Show driving steps
                             st.subheader("📍 Driving Steps")
                             if "steps" in leg:
                                 for i, step in enumerate(leg["steps"], 1):
-                                    # Clean HTML tags from instructions
                                     instruction = step.get("html_instructions", "").replace("<b>", "**").replace("</b>",
                                                                                                                  "**")
                                     instruction = instruction.replace("<div style=\"font-size:0.9em\">", " - ").replace(
@@ -204,5 +184,3 @@ if selected_order:
 
         with st.expander("🔍 Full Error Traceback"):
             st.code(traceback.format_exc())
-
-# Note: Connection is managed by @st.cache_resource, no need to manually close

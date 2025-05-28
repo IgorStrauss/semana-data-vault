@@ -5,5 +5,5 @@ pip install googlemaps
 ```
 
 ```shell
-streamlit run streamlit-app.py
+streamlit run gps-maps.py
 ```
