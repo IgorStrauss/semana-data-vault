@@ -25,7 +25,7 @@ st.title("🗺️ Google Maps Route")
 connection = get_connection()
 
 try:
-    order_df = pd.read_sql("SELECT DISTINCT order_id FROM ubereats.delivery.hub_order", connection)
+    order_df = pd.read_sql("SELECT DISTINCT order_id FROM ubereats.delivery.hub_order WHERE order_id = 'd9e1273c-9ebb-5580-188b-c52f8f7bb00d'", connection)
     selected_order = st.selectbox("Select an Order ID", order_df["order_id"].tolist())
 except Exception as e:
     st.error(f"Failed to fetch order IDs: {e}")
