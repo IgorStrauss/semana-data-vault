@@ -1,4 +1,4 @@
-                                        {{ config(materialized='incremental') }}
+{{ config(materialized='incremental') }}
 
 {%- set yaml_metadata -%}
 source_model: hub_order
